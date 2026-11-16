@@ -1,0 +1,81 @@
+// Packaged first-run acceptance with a synthetic plain Obsidian vault; no private fixture or network account.
+import { afterAll, describe, expect, it } from 'vitest'
+import { _electron as electron, type ElectronApplication } from 'playwright'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+const executablePath = process.env.ATLAS_E2E_EXECUTABLE
+const base = mkdtempSync(join(tmpdir(), 'atlas-first-run-'))
+let app: ElectronApplication | undefined
+const plain = join(base, 'Plain Obsidian')
+const source = Buffer.from('# Welcome\r\nA link to [[Second Note]].\r\n')
+const second = Buffer.from('---\r\ntype: note\r\n---\r\nUnchanged.\r\n')
+const config = Buffer.from('{"alwaysUpdateLinks":true}\n')
+const image = Buffer.from([0, 255, 1, 128, 72, 37, 42])
+mkdirSync(join(plain, '.obsidian'), { recursive: true })
+mkdirSync(join(plain, 'Attachments'), { recursive: true })
+writeFileSync(join(plain, 'Welcome.md'), source)
+writeFileSync(join(plain, 'Second Note.md'), second)
+writeFileSync(join(plain, '.obsidian', 'app.json'), config)
+writeFileSync(join(plain, 'Attachments', 'sample.png'), image)
+mkdirSync(join(base, 'home'))
+const shell = join(base, 'empty-shell')
+writeFileSync(shell, '#!/bin/sh\nexit 1\n', { mode: 0o755 })
+const env: NodeJS.ProcessEnv = { HOME: join(base, 'home'), USER: 'atlas-test', LOGNAME: 'atlas-test', TMPDIR: tmpdir(), CODEX_HOME: join(base, 'home/.codex'), CLAUDE_CONFIG_DIR: join(base, 'home/.claude'), PATH: '/usr/bin:/bin:/usr/sbin:/sbin', SHELL: shell, ATLAS_SCRIPT: '', ELECTRON_RENDERER_URL: '' }
+const launch = async (userdata: string) => electron.launch({ executablePath: executablePath!, args: [], env: { ...env, ATLAS_USER_DATA: userdata } })
+afterAll(async () => { await app?.close() })
+
+describe.skipIf(!executablePath)('packaged first-run setup', () => {
+  it('opens a plain vault without a startup picker, account access or byte changes, and edits locally', async () => {
+    const userdata = join(base, 'profile-open')
+    app = await launch(userdata)
+    let page = await app.firstWindow()
+    await page.locator('.first-run').waitFor()
+    await page.screenshot({ path: '/tmp/atlas-first-run-welcome.png' })
+    expect(await app.windows()).toHaveLength(1)
+    expect(existsSync(join(plain, '.git'))).toBe(false)
+    const status = await page.evaluate(() => window.atlas.addons.invoke('assistant', 'status'))
+    expect(status.claude.signedIn).toBe(false)
+    expect(status.codex.signedIn).toBe(false)
+    expect(await page.evaluate(() => window.atlas.addons.invoke('assistant', 'list'))).toEqual([])
+    await app.evaluate(({ dialog }, path) => { dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [path] })) as typeof dialog.showOpenDialog }, plain)
+    await page.getByRole('button', { name: 'Choose the vault folder…' }).click()
+    await expect.poll(() => existsSync(join(plain, 'Atlas/README.md'))).toBe(true)
+    for (const [path, bytes] of [['Welcome.md', source], ['Second Note.md', second], ['.obsidian/app.json', config], ['Attachments/sample.png', image]] as const) expect(readFileSync(join(plain, path)).equals(bytes)).toBe(true)
+    expect(existsSync(join(plain, '.git'))).toBe(false)
+    const opened = await page.evaluate(() => window.atlas.openVault('default'))
+    expect(opened?.root).toBe(plain)
+    expect(new Map(opened!.files).get('Welcome.md')).toBe(source.toString())
+    expect(JSON.parse(readFileSync(join(userdata, 'settings.json'), 'utf8')).lastVault).toBe(plain)
+    await page.getByRole('button', { name: 'Files', exact: true }).click()
+    await page.locator('.tree-row[data-path="Welcome.md"]').click()
+    await page.locator('.note-tools button', { hasText: 'Source' }).click()
+    const editor = page.locator('.cm-content'); await editor.waitFor(); await editor.click()
+    await page.keyboard.press('ControlOrMeta+End'); await page.keyboard.type(' Local edit.')
+    await expect.poll(() => readFileSync(join(plain, 'Welcome.md'), 'utf8')).toContain('Local edit.')
+    expect(readFileSync(join(plain, 'Welcome.md'), 'utf8')).toContain('[[Second Note]]')
+    expect(readFileSync(join(plain, '.obsidian/app.json')).equals(config)).toBe(true)
+    expect(readFileSync(join(plain, 'Attachments/sample.png')).equals(image)).toBe(true)
+    expect(existsSync(join(plain, '.git'))).toBe(false)
+    await app.close(); app = await launch(userdata); page = await app.firstWindow()
+    await page.locator('.rail').waitFor()
+    await expect.poll(async () => (await page.evaluate(() => window.atlas.openVault('default')))?.root).toBe(plain)
+    expect(readFileSync(join(plain, 'Welcome.md'), 'utf8')).toContain('Local edit.')
+    expect(existsSync(join(plain, '.git'))).toBe(false)
+    await app.close(); app = undefined
+  })
+  it('creates a new local vault in the chosen folder without initializing Git', async () => {
+    const userdata = join(base, 'profile-create')
+    const parent = join(base, 'new-vault-parent'); mkdirSync(parent)
+    app = await launch(userdata)
+    const page = await app.firstWindow(); await page.locator('.first-run').waitFor()
+    await app.evaluate(({ dialog }, path) => { dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [path] })) as typeof dialog.showOpenDialog }, parent)
+    await page.getByLabel('New vault name').fill('My New Vault')
+    await page.getByRole('button', { name: 'Create…' }).click()
+    const created = join(parent, 'My New Vault')
+    await expect.poll(() => existsSync(join(created, 'Atlas/README.md'))).toBe(true)
+    expect(existsSync(join(created, '.git'))).toBe(false)
+    expect(JSON.parse(readFileSync(join(userdata, 'settings.json'), 'utf8')).lastVault).toBe(created)
+  })
+})

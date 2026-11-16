@@ -78,6 +78,8 @@ function VaultConnection() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [publish, setPublish] = useState(false)
+  const [change, setChange] = useState(false)
+  const [disconnect, setDisconnect] = useState(false)
   useEffect(() => {
     void window.atlas.sync.get().then(setStatus)
     return window.atlas.sync.onStatus(setStatus)
@@ -98,7 +100,17 @@ function VaultConnection() {
           <div className="prefs-actions">
             <button className="chip-btn" disabled={busy || status.mode === 'off'} onClick={() => void run(() => window.atlas.sync.now(), 'Vault sync finished.')}>{busy ? 'Working…' : 'Sync now'}</button>
             <button className="link-btn" disabled={busy} onClick={() => setPublish(!publish)}>Publish existing files…</button>
+            <button className="link-btn" disabled={busy} onClick={() => { setChange(!change); setDisconnect(false); setUrl('') }}>Change repository…</button>
+            <button className="link-btn" disabled={busy} onClick={() => { setDisconnect(!disconnect); setChange(false) }}>Disconnect…</button>
           </div>
+          {change && <div className="prefs-hint">
+            Changing the repository does not upload files. Sync switches to Manual until you choose Auto.
+            <div className="prefs-actions"><input className="field-input" aria-label="New repository URL" placeholder="https://github.com/you/your-vault.git" value={url} onChange={(e) => setUrl(e.target.value)} /><button className="chip-btn" disabled={busy || !url.trim()} onClick={() => void run(async () => { const next = await window.atlas.changeRemote(url.trim()); setChange(false); return next }, 'Repository changed. Sync is Manual.')}>Change</button><button className="chip-btn" onClick={() => setChange(false)}>Cancel</button></div>
+          </div>}
+          {disconnect && <div className="prefs-hint">
+            Disconnect this repository? Your files and local Git history stay on this computer.
+            <div className="prefs-actions"><button className="chip-btn" disabled={busy} onClick={() => void run(async () => { const next = await window.atlas.disconnectRemote(); setDisconnect(false); setUrl(''); return next }, 'Repository disconnected. Files remain local.')}>Disconnect repository</button><button className="chip-btn" onClick={() => setDisconnect(false)}>Cancel</button></div>
+          </div>}
           {publish && <div className="prefs-hint">
             Publish this vault’s existing files and Git history to the connected empty repository. Ignored and local workspace files are excluded from newly added files. Use this once when setting up a new repository.
             <div className="prefs-actions"><button className="chip-btn primary" disabled={busy} onClick={() => void run(async () => {

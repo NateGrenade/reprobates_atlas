@@ -15,24 +15,25 @@ For an agent helping with installation, start with [AGENTS.md](AGENTS.md). It in
 
 ## Two independent kinds of update
 
-**The app:** Atlas checks this repository’s published GitHub Releases on launch. You can also use **Settings → About → Check for updates**. A source commit alone does not release an app: a version tag builds and publishes installers. Windows downloads the update and installs on quit. The Mac build downloads a new DMG, which you use to replace the app in Applications. Your vault remains in its own folder.
+**The app:** Atlas checks this repository’s published GitHub Releases on launch and every six hours. You can also use **Settings → About → Check for updates**. A source commit alone does not release an app: a version tag builds and publishes installers. Windows downloads the update and installs on quit. The Mac build downloads a new DMG, which you use to replace the app in Applications. Your vault remains in its own folder.
 
 **Your content:** your vault has a separate Git repository and remote. Install Git and authenticate with your own account (GitHub CLI’s `gh auth login` followed by `gh auth setup-git` works for HTTPS). Credentials are never included in Atlas.
 
 - An existing Git vault retains its remote. Choose **Auto**, **Manual**, or **Off** from the sync light or **Settings → General**.
 - For a local vault without a remote, enter its repository URL in **Settings → General → Vault sync → Connect**. This starts in Manual mode and does not upload anything.
+- Use **Change repository** or **Disconnect** in the same settings to change the destination. These actions preserve local files/history and switch to Manual; changing a URL does not upload your vault. Choose Auto when ready. Fetch and push use the displayed destination.
 - To publish an existing local vault into an **empty** repository, use **Publish existing files → Publish vault**. This publishes eligible files and existing Git history. Check the repository visibility and `.gitignore` first.
 - To use a repository that already contains content, **Clone** it on the welcome screen, then open that same folder in Obsidian.
-- Auto pulls every two minutes and commits/pushes Atlas changes after 30 seconds of inactivity. Pending writes survive a restart. Atlas stages only files it changed during normal sync, including Writer documents; edits made in other apps remain for those apps or your Git workflow to commit.
+- Auto pulls on opening the vault and every two minutes, and commits/pushes Atlas changes after 30 seconds of inactivity. Pending writes survive a restart. Atlas stages only files it changed during normal sync, including Writer documents; edits made in other apps remain for those apps or your Git workflow to commit.
 - Conflicts pause sync for you to review. Atlas does not force-push. For one folder shared with Obsidian Git, use one automatic sync owner: disable Obsidian’s automatic Git jobs while Atlas Auto is on, or set Atlas Off and use Obsidian Git.
 
-A vault does not need Git to work locally. Network errors leave local work intact.
+A vault does not need Git to work locally. Without a connected repository, Atlas saves files locally without automatic commits, pulls, or pushes. Network errors leave local work intact.
 
 ## Writer and assistant
 
 Writer stores Markdown in `Manuscript/<Book>/<Chapter>.md`, with CriticMarkup comments and suggestions. Page settings and version snapshots are local Atlas app data; they are not part of vault sync. Lore notes keep the plain-file editor and are never passed through the rich editor. DOCX, PDF, and Markdown import/export are available from Writer; Google Docs can be exported as DOCX and imported without a Drive connection.
 
-The Assistant uses separately installed, signed-in **Codex CLI** or **Claude Code**. Choose the provider, model, and reasoning in its compact controls. Atlas tools can inspect the app and propose file, manuscript, and planet changes; edits wait for **Apply** or **Skip** inside Atlas. Prose drafting needs the session’s explicit permission. Account credentials and chat history stay on the computer.
+The Assistant uses separately installed, signed-in **Codex CLI** or **Claude Code**, with each person's own account or provider credentials. No subscription, account session, API key, vault, or conversation history is bundled with the app. It has no shared inference service or access to the developer's accounts. Choose the provider, model, and reasoning in its compact controls. Atlas tools can inspect the app and propose file, manuscript, and planet changes; edits wait for **Apply** or **Skip** inside Atlas. Prose drafting needs the session’s explicit permission. Account credentials and chat history stay on the computer.
 
 ## Develop
 

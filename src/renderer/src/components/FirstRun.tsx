@@ -37,7 +37,7 @@ export function FirstRun() {
     <div className="placeholder">
       <motion.div className="first-run" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
         <div className="ph-title">Reprobates Atlas</div>
-        <p className="ph-sub" style={{ maxWidth: 460 }}>The map, timeline and characters of the Reprobates vault. Everything stays as plain files in the vault, so Obsidian keeps working.</p>
+        <p className="ph-sub" style={{ maxWidth: 460 }}>Open any Obsidian vault or start a new one. Your notes stay in your folder, and Obsidian keeps working alongside Atlas.</p>
         <div className="fr-steps">
           <div className="fr-step">
             <h4>1 · Open the vault</h4>
@@ -46,7 +46,7 @@ export function FirstRun() {
             </button>
             <div className="fr-or">or clone it</div>
             <div className="fr-clone">
-              <input className="field-input" placeholder="https://github.com/…/Reprobates.git" value={url} onChange={(e) => setUrl(e.target.value)} />
+              <input className="field-input" aria-label="Repository to clone" placeholder="https://github.com/you/your-vault.git" value={url} onChange={(e) => setUrl(e.target.value)} />
               <button className="chip-btn" disabled={!url.trim() || busy || !git} onClick={clone}>
                 {busy ? 'Cloning…' : 'Clone'}
               </button>
@@ -60,11 +60,11 @@ export function FirstRun() {
           </div>
           <div className="fr-step">
             <h4>2 · Git</h4>
-            <p className="muted">{git === undefined ? 'Checking…' : git ? `${git} found. Sync will work.` : 'Git was not found. Install it (macOS: run "xcode-select --install"; Windows: git-scm.com), or set sync to Off and let Obsidian sync.'}</p>
+            <p className="muted">{git === undefined ? 'Checking…' : git ? `${git} found. Git is available for sync; connect your repository when ready.` : 'Git was not found. You can keep working locally. Install Git when you want repository sync (macOS: "xcode-select --install"; Windows: git-scm.com).'}</p>
           </div>
           <div className="fr-step">
             <h4>3 · Sync</h4>
-            <p className="muted">Auto (default) pulls every 2 minutes and pushes the files this app changed 30 seconds after you stop editing. It never stages other files and stops to ask if a change conflicts. Switch to Manual or Off from the light at the bottom of the left rail.</p>
+            <p className="muted">If your vault has a connected repository, Auto pulls on launch and every 2 minutes, then pushes Atlas edits after 30 seconds of inactivity. Without a repository, everything stays local. Manage the connection and Auto, Manual or Off in Settings.</p>
           </div>
         </div>
       </motion.div>

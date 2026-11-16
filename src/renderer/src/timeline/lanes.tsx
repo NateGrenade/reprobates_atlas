@@ -150,7 +150,7 @@ export function ThreadDialog({ initial, onClose }: { initial?: TimelineDef; onCl
       <motion.form className="thread-dialog" initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} onMouseDown={(e) => e.stopPropagation()} onSubmit={(e) => (e.preventDefault(), save())}>
         <div className="pd-title">{initial ? 'Edit thread' : 'New thread'}</div>
         <p className="muted" style={{ fontSize: 'calc(12px * var(--ui-scale))', margin: 0 }}>A thread is a custom sub-timeline (a plot line, a book, a war). Events join it from the event editor or by dragging them onto its lane.</p>
-        <input className="field-input" autoFocus placeholder="Name, e.g. The Obelisk hunt" value={name} onChange={(e) => setName(e.target.value)} />
+        <input className="field-input" autoFocus placeholder="Name, e.g. The expedition" value={name} onChange={(e) => setName(e.target.value)} />
         <div className="swatches">
           {THREAD_COLORS.map((c) => (
             <button type="button" key={c} className={`swatch${c === color ? ' on' : ''}`} style={{ background: c }} onClick={() => setColor(c)} aria-label={c} />

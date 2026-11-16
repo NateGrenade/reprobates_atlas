@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { connectRemote, SyncEngine } from '../core/sync'
+import { connectRemote, disconnectRemote, SyncEngine } from '../core/sync'
 import { WriterStorage } from '../addons/writer/storage'
 import { watchVault } from '../core/node'
 
@@ -181,7 +181,7 @@ describe('git sync (bare remote, two clones)', () => {
     git(a, 'remote', 'remove', 'origin')
     const A = new SyncEngine(a, { mode: 'manual' })
     expect(await A.sync()).toBe('local')
-    expect(A.status().message).toMatch(/No remote configured/)
+    expect(A.status().message).toMatch(/No repository connected/)
     const path = process.env.PATH
     try {
       process.env.PATH = ''
@@ -276,6 +276,74 @@ describe('git sync (bare remote, two clones)', () => {
     expect(await engine.publishExisting()).toBe('synced')
     expect(git(dir, '--git-dir', remote, 'show', 'main:.env')).toBe('updated tracked file')
     expect(git(dir, '--git-dir', remote, 'log', '--format=%s', 'main')).toContain('existing history')
+  })
+
+  it('leaves edits uncommitted when no destination is configured', async () => {
+    const { a } = setup()
+    git(a, 'remote', 'remove', 'origin')
+    const engine = new SyncEngine(a, { mode: 'manual' })
+    const original = git(a, 'rev-parse', 'HEAD').trim()
+    edit(a, 'Atlas/Timeline/One.md', 'local only')
+    engine.recordWrite('Atlas/Timeline/One.md')
+    expect(await engine.sync()).toBe('local')
+    expect(git(a, 'rev-parse', 'HEAD').trim()).toBe(original)
+    expect(engine.status().pending).toContain('Atlas/Timeline/One.md')
+    expect(readFileSync(join(a, 'Atlas/Timeline/One.md'), 'utf8')).toBe('local only')
+  })
+  it('switches the destination without contacting the old remote, then disconnects without deleting history', async () => {
+    const { dir, a } = setup()
+    const old = join(dir, 'remote.git'), replacement = join(dir, 'replacement.git')
+    git(dir, 'clone', '-q', '--bare', old, replacement)
+    const before = git(dir, '--git-dir', old, 'rev-parse', 'refs/heads/main').trim()
+    git(a, 'remote', 'set-url', '--push', 'origin', old)
+    git(a, 'remote', 'add', 'decoy', old)
+    git(a, 'config', 'branch.main.remote', 'decoy')
+    await connectRemote(a, replacement, true)
+    expect(git(a, 'remote', 'get-url', '--push', 'origin').trim()).toBe(replacement)
+    expect(git(a, 'config', 'branch.main.remote').trim()).toBe('origin')
+    expect(git(dir, '--git-dir', old, 'rev-parse', 'refs/heads/main').trim()).toBe(before)
+    const engine = new SyncEngine(a, { mode: 'manual' })
+    edit(a, 'Atlas/Timeline/One.md', 'new destination')
+    engine.recordWrite('Atlas/Timeline/One.md')
+    expect(await engine.sync()).toBe('synced')
+    expect(git(dir, '--git-dir', replacement, 'show', 'main:Atlas/Timeline/One.md')).toBe('new destination')
+    expect(git(dir, '--git-dir', old, 'rev-parse', 'refs/heads/main').trim()).toBe(before)
+    const localHead = git(a, 'rev-parse', 'HEAD').trim()
+    await disconnectRemote(a)
+    expect(git(a, 'rev-parse', 'HEAD').trim()).toBe(localHead)
+    edit(a, 'Atlas/Timeline/One.md', 'kept local')
+    engine.recordWrite('Atlas/Timeline/One.md')
+    expect(await engine.sync()).toBe('local')
+    expect(git(a, 'rev-parse', 'HEAD').trim()).toBe(localHead)
+    expect(git(dir, '--git-dir', replacement, 'show', 'main:Atlas/Timeline/One.md')).toBe('new destination')
+  })
+  it('refuses conflicting push URLs before staging any file', async () => {
+    const { dir, a } = setup()
+    const other = join(dir, 'different.git')
+    git(dir, 'init', '-q', '--bare', other)
+    git(a, 'remote', 'set-url', '--push', 'origin', other)
+    const engine = new SyncEngine(a, { mode: 'manual' })
+    edit(a, 'Atlas/Timeline/One.md', 'private change')
+    engine.recordWrite('Atlas/Timeline/One.md')
+    expect(await engine.sync()).toBe('error')
+    expect(engine.status().message).toMatch(/different fetch and push URLs/)
+    expect(git(a, 'log', '-1', '--format=%s').trim()).toBe('seed')
+    expect(engine.status().pending).toContain('Atlas/Timeline/One.md')
+  })
+  it('automatically pulls changes arriving after startup', async () => {
+    const { a, b } = setup()
+    const engine = new SyncEngine(a, { mode: 'auto', pullIntervalMs: 200 })
+    engine.start()
+    try {
+      const until = Date.now() + 5000
+      while (!engine.status().lastSync && Date.now() < until) await new Promise(resolve => setTimeout(resolve, 30))
+      expect(engine.status().lastSync).toBeDefined()
+      edit(b, 'Atlas/Timeline/Two.md', 'incoming after startup')
+      git(b, 'add', 'Atlas/Timeline/Two.md'); git(b, 'commit', '-qm', 'incoming'); git(b, 'push', '-q')
+      const deadline = Date.now() + 5000
+      while (readFileSync(join(a, 'Atlas/Timeline/Two.md'), 'utf8') !== 'incoming after startup' && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 30))
+      expect(readFileSync(join(a, 'Atlas/Timeline/Two.md'), 'utf8')).toBe('incoming after startup')
+    } finally { engine.stop() }
   })
 
 })

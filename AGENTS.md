@@ -26,10 +26,13 @@ Ask whether they want GitHub content sync if they have not said so. Use a reposi
 - **Existing content on GitHub, not yet local:** clone through Atlas’s welcome screen, using a new destination folder. Open the resulting folder as a vault in Obsidian too.
 - **Local vault with a new empty repository:** use **Settings → General → Vault sync → Connect**. Connecting initializes Git if necessary but uploads nothing. Review `.gitignore` and the chosen visibility. Only when publishing is authorized, use **Publish existing files → Publish vault**; this includes existing Git history. The remote must be empty. Then select Auto if desired.
 - **Local-only vault:** leave sync Off/unconfigured. GitHub is optional.
+- **Change or disconnect a repository:** use **Settings → General → Vault sync → Change repository** or **Disconnect**. Local files and history are preserved; sync returns to Manual. Check the destination, then enable Auto if requested. Do not replace Git history or force-push to make unrelated repositories match.
 
 Git must be installed and authenticated as the user. For HTTPS GitHub, `gh auth login` and `gh auth setup-git` configure the user’s credential flow; SSH remotes use their existing SSH setup. Never request tokens in chat or bake credentials into the app or URLs. Handle account sign-in through the normal local credential flow.
 
 Auto sync commits only files changed by Atlas, including Writer saves, and pulls remote changes every two minutes. Explicit initial publishing adds eligible existing files; normal sync does not stage unrelated external edits. Pending Atlas writes persist across restarts. Conflicts stop sync for review, with both versions available. If Obsidian Git manages this same folder, choose one automatic sync owner to avoid competing jobs.
+
+An unconnected vault remains local: Atlas does not commit or contact a remote. The Assistant also needs the user's own separately installed and signed-in Codex CLI or Claude Code. There are no bundled account sessions, subscriptions, API keys, or private vaults; never copy another person's account data as part of setup.
 
 ## Verify the setup
 

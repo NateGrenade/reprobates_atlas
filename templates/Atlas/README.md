@@ -22,31 +22,31 @@ type: character   # or: location, faction, item, event
 The folder a note sits in never implies its type. References between entities are **always quoted wikilink strings**, and may point at a heading:
 
 ```yaml
-affiliation: ["[[The Concord]]"]
-location: "[[Supporting Cast#Chara|Chara]]"
+affiliation: ["[[The Council]]"]
+location: "[[Supporting Cast#Mira|Mira]]"
 ```
 
-Unquoted `[[Elion]]` in YAML is a nested list, not a link; `atlas validate` reports it.
+Unquoted `[[Rowan]]` in YAML is a nested list, not a link; `atlas validate` reports it.
 
-**Heading entities.** Something that has no note of its own (Chara is only a heading in `Characters/Supporting Cast.md`) gets a stub note at `Atlas/Entities/<Name>.md`:
+**Heading entities.** Something that has no note of its own (Mira is only a heading in `Miracters/Supporting Cast.md`) gets a stub note at `Atlas/Entities/<Name>.md`:
 
 ```yaml
 ---
 type: character
-source: "[[Supporting Cast#Chara]]"
+source: "[[Supporting Cast#Mira]]"
 ---
 ```
 
-The app shows the source heading's section as the stub's lore. `[[Chara]]` (the stub) and `[[Supporting Cast#Chara]]` (the heading) then mean the same entity everywhere, including timelines.
+The app shows the source heading's section as the stub's lore. `[[Mira]]` (the stub) and `[[Supporting Cast#Mira]]` (the heading) then mean the same entity everywhere, including timelines.
 
-## 2. Characters
+## 2. Miracters
 
 All keys optional and flat, so Obsidian's Properties panel can edit them:
 
 | key | meaning |
 | --- | --- |
 | `type` | `character` |
-| `portrait` | vault path of an image, e.g. `Atlas/Portraits/elion.png` |
+| `portrait` | vault path of an image, e.g. `Atlas/Portraits/rowan.png` |
 | `aliases` | list of other names (used by search) |
 | `role` | short text |
 | `affiliation` | list of quoted wikilinks |
@@ -80,11 +80,11 @@ One beat = one file `Atlas/Timeline/<Title>.md`. On a name clash append ` 2`, ` 
 ```yaml
 ---
 type: beat
-title: Elion enters the Capital
+title: Rowan enters the Capital
 year: 0
 day: 12
-characters: ["[[Elion]]"]
-location: "[[Concordian Capital]]"
+characters: ["[[Rowan]]"]
+location: "[[Councilian Capital]]"
 move: arrive
 timelines: [book-1]
 status: provisional
@@ -118,7 +118,7 @@ Free markdown body.
 A beat can name another beat as its main event, on the sub-event only, as flat keys:
 
 ```yaml
-main_event: "[[Soren awakens]]"   # quoted wikilink to the main event's file name
+main_event: "[[The journey begins]]"   # quoted wikilink to the main event's file name
 follows_main: true                 # optional; omit or false = the link is only organisational
 ```
 
@@ -152,10 +152,10 @@ active_calendar: null  # slug of the calendar used for display and typing
 Event times are stored in **standard measures**, independent of any calendar: `year` counts 365-day years from the moment Book 1 begins, `day` is 1-365, `hour` 0-23, `minute` 0-59. Calendars only change how dates are shown and typed, through the absolute number of minutes since that moment. Editing or adding a calendar never changes or invalidates an event. Every calendar layer is optional and defaults to Earth.
 
 ```yaml
-active_calendar: aurelian        # used for display and typing; default: the first calendar
+active_calendar: local_calendar        # used for display and typing; default: the first calendar
 calendars:
-  - slug: aurelian
-    name: Aurelian Reckoning
+  - slug: local_calendar
+    name: Local Reckoning
     year_zero_offset: 1200       # Book 1 begins in the calendar's year 1200
     epoch_month: 1               # ... in its first month (1-based; default 1)
     epoch_day: 1                 # ... on day 1 (default 1)
@@ -169,8 +169,8 @@ calendars:
     weekdays: [Oneday, Twoday, Threeday]   # any number; default Monday..Sunday
     week_start_offset: 0         # weekday index of Book 1's first day
     hours_per_day: 20            # default 24; hours are always 60 minutes, so this day lasts 1,200 minutes
-  - slug: concord
-    name: Concord Count
+  - slug: regional
+    name: Council Count
     epoch_day_offset: 100        # older form: Book 1 begins 100 days into the calendar's year 0
     months: [{ name: First, days: 200 }, { name: Second, days: 200 }]
 ```
@@ -184,7 +184,7 @@ Which lanes the timeline shows for each grouping. The app writes it when you pic
 ```json
 {
   "lanes": {
-    "character": { "auto": false, "shown": ["Characters/Elion.md", "Atlas/Entities/Chara.md", "__none"] },
+    "character": { "auto": false, "shown": ["Miracters/Rowan.md", "Atlas/Entities/Mira.md", "__none"] },
     "timeline": { "auto": true, "shown": [] }
   }
 }

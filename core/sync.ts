@@ -62,7 +62,7 @@ export class SyncEngine {
     this.gitCalls++
     return new Promise((resolve, reject) => {
       execFile('git', ['-C', this.root, ...args], { maxBuffer: 32 * 1024 * 1024, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } }, (err, stdout, stderr) => {
-        if (err) reject(Object.assign(new Error((err as NodeJS.ErrnoException).code === 'ENOENT' ? 'Git is not installed or not available on PATH. Install Git to sync this vault.' : String(stderr || err.message).trim()), { stdout, stderr }))
+        if (err) reject(Object.assign(new Error((err as NodeJS.ErrnoException).code === 'ENOENT' ? 'Git is not installed or not available on PATH. Install Git to sync this vault.' : String(stderr || err.message).trim()), { stdout, stderr, code: err.code }))
         else resolve(stdout)
       })
     })
@@ -71,9 +71,9 @@ export class SyncEngine {
   status(): SyncStatus {
     return { state: this.state, mode: this.mode, pending: [...this.pending.keys()], conflicts: [...this.conflicts], message: this.message, lastSync: this.lastSync, remote: this.remote }
   }
-  setRemote(remote: string) {
+  setRemote(remote: string | undefined) {
     this.remote = remote
-    this.set(this.pending.size ? 'pending' : 'local', 'Remote connected. Choose how to sync this vault.')
+    this.set(this.pending.size ? 'pending' : 'local', remote ? 'Remote connected. Choose how to sync this vault.' : 'No repository connected.')
   }
   private set(state: SyncState, message?: string) {
     this.state = state
@@ -91,6 +91,7 @@ export class SyncEngine {
     if (this.commitTimer) clearTimeout(this.commitTimer)
     this.pullTimer = this.commitTimer = null
   }
+  async idle() { await this.running }
   setMode(mode: SyncMode) {
     this.stop()
     this.mode = mode
@@ -141,17 +142,20 @@ export class SyncEngine {
         if (this.conflicts.length) return this.set('conflict', 'Resolve the conflicting files to resume sync'), 'conflict'
       }
       if (!(await this.waitForLock())) return this.set('locked', 'Another git process is busy; will retry'), 'locked'
+      const configured = await this.git(['config', '--get', 'remote.origin.url']).catch((e: any) => { if (e.code === 1) return ''; throw e })
+      this.remote = configured.trim() ? (await this.git(['remote', 'get-url', 'origin'])).trim() : undefined
+      if (!this.remote) return this.set('local', 'No repository connected; files remain local.'), 'local'
+      const pushUrls = (await this.git(['remote', 'get-url', '--push', '--all', 'origin'])).trim().split('\n')
+      if (pushUrls.some(url => url !== this.remote)) return this.set('error', 'The repository has different fetch and push URLs. Choose one repository in Settings before syncing.'), 'error'
+      const branch = (await this.git(['symbolic-ref', '--short', 'HEAD'])).trim()
+      const upstreamRemote = (await this.git(['config', '--get', `branch.${branch}.remote`]).catch(() => '')).trim()
+      const upstreamRef = (await this.git(['config', '--get', `branch.${branch}.merge`]).catch(() => '')).trim()
+      const target = upstreamRemote === 'origin' && upstreamRef.startsWith('refs/heads/') ? upstreamRef.slice('refs/heads/'.length) : branch
       this.set('syncing')
       await this.commitOwn()
-      const remotes = (await this.git(['remote'])).trim()
-      this.remote = remotes.split('\n').includes('origin') ? (await this.git(['remote', 'get-url', 'origin'])).trim() : undefined
-      if (!remotes) {
-        this.lastSync = Date.now()
-        return this.set('local', 'No remote configured; changes are committed locally'), 'local'
-      }
       if (!(await this.waitForLock())) return this.set('locked', 'Another git process is busy; will retry'), 'locked'
       try {
-        await this.git(['pull', '--no-rebase', '--no-edit'])
+        await this.git(['pull', '--no-rebase', '--no-edit', 'origin', target])
       } catch (e: any) {
         const unmerged = await this.unmerged()
         if (unmerged.length) {
@@ -162,10 +166,10 @@ export class SyncEngine {
         if (/could not resolve|unable to access|Could not read from remote|network|timed out/i.test(e.message)) return this.set('offline', e.message), 'offline'
         throw e
       }
-      const ahead = await this.git(['rev-list', '--count', '@{u}..HEAD']).catch(() => '0')
+      const ahead = await this.git(['rev-list', '--count', `refs/remotes/origin/${target}..HEAD`])
       if (Number(ahead.trim()) > 0) {
         try {
-          await this.git(['push'])
+          await this.git(['push', 'origin', `HEAD:refs/heads/${target}`])
         } catch (e: any) {
           if (/could not resolve|unable to access|Could not read from remote|network|timed out/i.test(e.message)) return this.set('offline', e.message), 'offline'
           throw e
@@ -216,6 +220,8 @@ export class SyncEngine {
       if (!(await this.waitForLock())) return this.set('locked', 'Another git process is busy; will retry'), 'locked'
       this.set('syncing')
       this.remote = (await this.git(['remote', 'get-url', 'origin'])).trim()
+      const pushUrls = (await this.git(['remote', 'get-url', '--push', '--all', 'origin'])).trim().split('\n')
+      if (pushUrls.some(url => url !== this.remote)) throw new Error('The repository has different fetch and push URLs. Choose one repository in Settings before publishing.')
       if ((await this.git(['ls-remote', '--refs', 'origin'])).trim()) throw new Error('The remote is not empty. Clone it or reconcile its history before publishing.')
       const revisions = new Map(this.pending)
       const exclusions = ['**/.obsidian/workspace*.json', '**/.env', '**/.env.*', '**/*.pem', '**/*.key', '**/*.p12', '**/*.pfx', '**/id_rsa*', '**/id_ed25519*', '**/.ssh/**']
@@ -270,21 +276,34 @@ export async function isGitRepo(root: string) {
   return existsSync(join(root, '.git'))
 }
 
-/** Attach an origin without fetching, staging, committing, or pushing. */
-export async function connectRemote(root: string, url: string): Promise<void> {
+/** Configure a destination without fetching, staging, committing, or pushing. */
+export async function connectRemote(root: string, url: string, replace = false): Promise<void> {
   const remote = url.trim()
   if (!remote || remote.startsWith('-') || /[\r\n\0]/.test(remote)) throw new Error('Enter a valid Git remote URL')
   const git = new SyncEngine(root, { mode: 'manual' })
   if (!existsSync(join(root, '.git'))) await git.git(['init', '-b', 'main'])
-  const remotes = (await git.git(['remote'])).split('\n')
-  if (remotes.includes('origin')) {
-    const current = (await git.git(['remote', 'get-url', 'origin'])).trim()
-    if (current !== remote) throw new Error('This vault already has an origin remote. Its existing remote was not changed.')
-  } else await git.git(['remote', 'add', 'origin', remote])
+  const current = (await git.git(['config', '--get', 'remote.origin.url']).catch(() => '')).trim()
+  if (current && current !== remote && !replace) throw new Error('This vault already has an origin remote. Its existing remote was not changed.')
+  await git.git(['config', '--replace-all', 'remote.origin.url', remote])
+  const fetch = (await git.git(['config', '--get', 'remote.origin.fetch']).catch(() => '')).trim()
+  if (!fetch) await git.git(['config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/*'])
+  await git.git(['config', '--unset-all', 'remote.origin.pushurl']).catch(() => '')
   const branch = (await git.git(['symbolic-ref', '--short', 'HEAD'])).trim()
-  const existing = await git.git(['config', '--get', `branch.${branch}.remote`]).catch(() => '')
-  if (!existing.trim()) {
+  if (replace || !current) {
     await git.git(['config', `branch.${branch}.remote`, 'origin'])
     await git.git(['config', `branch.${branch}.merge`, `refs/heads/${branch}`])
+  }
+}
+
+/** Forget the destination but preserve local history and remote-tracking references. */
+export async function disconnectRemote(root: string): Promise<void> {
+  const git = new SyncEngine(root, { mode: 'manual' })
+  await git.git(['config', '--unset-all', 'remote.origin.url']).catch(() => '')
+  await git.git(['config', '--unset-all', 'remote.origin.pushurl']).catch(() => '')
+  const branch = (await git.git(['symbolic-ref', '--short', 'HEAD'])).trim()
+  const upstream = (await git.git(['config', '--get', `branch.${branch}.remote`]).catch(() => '')).trim()
+  if (upstream === 'origin') {
+    await git.git(['config', '--unset-all', `branch.${branch}.remote`]).catch(() => '')
+    await git.git(['config', '--unset-all', `branch.${branch}.merge`]).catch(() => '')
   }
 }

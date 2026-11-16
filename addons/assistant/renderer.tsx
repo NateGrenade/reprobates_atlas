@@ -218,7 +218,7 @@ export default function activate(api: AddonApi) {
     useEffect(() => void api.ipc.invoke('status').then(setStatus), [])
     return (
       <div className="asst-settings">
-        <p style={{ color: 'var(--text-2)' }}>Press ⌘J (Ctrl+J on Windows) anywhere to ask the assistant. It uses the Claude Code or Codex already signed in on this computer; this add-on holds no key or account of its own.</p>
+        <p style={{ color: 'var(--text-2)' }}>Press ⌘J (Ctrl+J on Windows) anywhere to ask the assistant. Install Claude Code or Codex and sign in with your own account on this computer. The assistant uses your sign-in and its available access and usage limits; this add-on contains no account or API key.</p>
         {status ? (['claude', 'codex'] as Provider[]).map((p) => (
           <div className="prefs-row" key={p}>
             <div className="prefs-row-k">{APPS[p]}</div>

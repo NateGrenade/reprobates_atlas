@@ -1,6 +1,6 @@
 {
   "name": "reprobates-atlas",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Reprobates Atlas: lore omni-tool over the Reprobates Obsidian vault",
   "main": "out/main/index.js",
   "scripts": {

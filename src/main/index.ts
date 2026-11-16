@@ -10,7 +10,7 @@ import { scanVault, watchVault, type VaultWatcher } from '../../core/node'
 import { APP_NAME, PATHS } from '../../core/config'
 import readmeTemplate from '../../templates/Atlas/README.md?raw'
 import configTemplate from '../../templates/Atlas/atlas.yaml?raw'
-import { connectRemote, SyncEngine, type SyncMode } from '../../core/sync'
+import { connectRemote, disconnectRemote, SyncEngine, type SyncMode } from '../../core/sync'
 import { makeUpdater, type UpdateInfo } from './updater'
 import { execFile } from 'node:child_process'
 
@@ -77,7 +77,7 @@ async function openVault(root: string) {
     sync.start()
   }
   if (app.isPackaged) saveSettings({ lastVault: root })
-  // First open: write the contract and config if the vault has none (not auto-committed; Nathan decides).
+  // First open: add Atlas metadata only; existing notes are left untouched.
   for (const [p, text] of [[PATHS.readme, readmeTemplate], [PATHS.config, configTemplate]] as const) {
     const abs = join(root, p)
     if (!existsSync(abs)) {
@@ -117,12 +117,13 @@ async function openVault(root: string) {
 
 ipcMain.handle('vault:open', async (_e, which?: 'default' | 'pick') => {
   let root = which === 'pick' ? null : vaultRoot ?? defaultVault()
-  if (!root || which === 'pick') {
+  if (!root && which !== 'pick') return null
+  if (which === 'pick') {
     const r = await dialog.showOpenDialog(win!, { title: 'Open your vault folder', properties: ['openDirectory'] })
     if (r.canceled || !r.filePaths[0]) return vaultRoot ? openVault(vaultRoot) : null
     root = r.filePaths[0]
   }
-  if (!existsSync(root)) return null
+  if (!root || !existsSync(root)) return null
   return openVault(root)
 })
 
@@ -225,6 +226,7 @@ ipcMain.handle('vault:connectRemote', async (_e, url: string) => {
   const root = vaultRoot
   const previous = sync
   previous?.stop()
+  await previous?.idle()
   try {
     await connectRemote(root, url)
     saveSettings({ [syncKey(root)]: 'manual' })
@@ -235,6 +237,32 @@ ipcMain.handle('vault:connectRemote', async (_e, url: string) => {
     previous?.start()
     throw error
   }
+})
+ipcMain.handle('vault:changeRemote', async (_e, url: string) => {
+  if (!vaultRoot) throw new Error('Open a vault first')
+  const root = vaultRoot, previous = sync
+  previous?.stop()
+  await previous?.idle()
+  try {
+    await connectRemote(root, url, true)
+    saveSettings({ [syncKey(root)]: 'manual' })
+    await openVault(root)
+    sync!.setRemote(url.trim())
+    return sync!.status()
+  } catch (error) { previous?.start(); throw error }
+})
+ipcMain.handle('vault:disconnectRemote', async () => {
+  if (!vaultRoot || !sync) throw new Error('No repository connected')
+  const root = vaultRoot, previous = sync
+  previous.stop()
+  await previous.idle()
+  try {
+    await disconnectRemote(root)
+    saveSettings({ [syncKey(root)]: 'manual' })
+    await openVault(root)
+    sync!.setRemote(undefined)
+    return sync!.status()
+  } catch (error) { previous.start(); throw error }
 })
 ipcMain.handle('vault:clone', async (_e, url: string) => {
   const r = await dialog.showOpenDialog(win!, { title: 'Choose where to put the vault', properties: ['openDirectory', 'createDirectory'] })
@@ -289,7 +317,11 @@ function createWindow() {
       if (state === 'completed' && !process.env.ATLAS_DOWNLOAD_DIR) shell.showItemInFolder(item.getSavePath())
     })
   })
-  win.webContents.once('did-finish-load', () => setTimeout(checkForUpdate, 3000))
+  win.webContents.once('did-finish-load', () => {
+    setTimeout(checkForUpdate, 3000)
+    const updates = setInterval(checkForUpdate, 6 * 60 * 60 * 1000)
+    win?.once('closed', () => clearInterval(updates))
+  })
   if (process.env.ELECTRON_RENDERER_URL) win.loadURL(process.env.ELECTRON_RENDERER_URL)
   else win.loadFile(join(__dirname, '../renderer/index.html'))
 

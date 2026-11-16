@@ -50,7 +50,7 @@ export function validateVault(files: Map<string, string | null>, ix = new VaultI
     }
     if (d.source !== undefined) {
       const l = parseLink(d.source as string)
-      if (!l) add('source', `'source' must be a quoted wikilink such as "[[Supporting Cast#Chara]]"`)
+      if (!l) add('source', `'source' must be a quoted wikilink such as "[[Supporting Cast#Mira]]"`)
       else {
         const p = ix.resolver.resolve(l.target, n.path)
         if (!p) add('source', `'source' target not found: ${l.raw}`)
@@ -156,7 +156,7 @@ function checkMainEvent(n: Note, ix: VaultIndex, add: Add) {
   const v = n.fm.data.main_event
   if (Array.isArray(v)) return // reported as unquoted wikilink
   const l = typeof v === 'string' ? parseLink(v) : null
-  if (!l) return add('main_event', `'main_event' must be a quoted wikilink to another event, e.g. main_event: "[[Soren awakens]]"`)
+  if (!l) return add('main_event', `'main_event' must be a quoted wikilink to another event, e.g. main_event: "[[The journey begins]]"`)
   const p = ix.resolver.resolve(l.target, n.path)
   if (!p) return add('main_event', `${l.raw} does not match any note`)
   if (p === n.path) return add('main_event', `An event cannot be its own main event`)

@@ -1,0 +1,17 @@
+dev-vault/
+node_modules/
+out/
+dist/
+.DS_Store
+*.log
+.vite/
+# Local development records and private vault screenshots are not public source.
+docs/shots/
+docs/ai.md
+plan/
+HANDOFF.md
+scripts/checks/
+scripts/spike/
+scripts/setup-dev-vault.sh
+.env
+.env.*

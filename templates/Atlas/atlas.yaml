@@ -1,0 +1,7 @@
+# Reprobates Atlas settings. See Atlas/README.md.
+epoch_label: "Book 1 begins"
+days_per_year: 365
+eras: []
+timelines: []
+calendar: null
+root_location: null

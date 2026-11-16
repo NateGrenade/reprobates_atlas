@@ -1,0 +1,153 @@
+{
+  "name": "reprobates-atlas",
+  "version": "0.2.0",
+  "description": "Reprobates Atlas: lore omni-tool over the Reprobates Obsidian vault",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p .",
+    "atlas": "tsx cli/atlas.ts",
+    "atlas-mcp": "tsx cli/mcp.ts",
+    "dist:mac": "npm run prepare:dist && electron-builder --mac --arm64",
+    "dist:win": "npm run prepare:dist && electron-builder --win --x64",
+    "e2e": "electron-vite build && node scripts/build-addons.mjs --out out/addons-test && vitest run -c vitest.e2e.config.ts",
+    "addons": "node scripts/build-addons.mjs assistant writer",
+    "dist:personal": "npm run dist:mac",
+    "dev:personal": "npm run addons && ATLAS_ADDONS_DIR=out/addons electron-vite dev",
+    "prepare:dist": "electron-vite build && node scripts/prepare-release.mjs && npm run addons"
+  },
+  "type": "module",
+  "devDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.325",
+    "@codemirror/autocomplete": "^6.20.4",
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/search": "^6.7.2",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.15",
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@lezer/highlight": "^1.2.5",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
+    "@react-three/postprocessing": "^3.2.2",
+    "@tiptap/extension-link": "^3.34.0",
+    "@tiptap/extension-text-align": "^3.34.0",
+    "@tiptap/extension-underline": "^3.34.0",
+    "@tiptap/pm": "^3.34.0",
+    "@tiptap/react": "^3.34.0",
+    "@tiptap/starter-kit": "^3.34.0",
+    "@types/jsdom": "^30.0.0",
+    "@types/markdown-it": "^14.2.0",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/sanitize-html": "^2.16.2",
+    "@types/three": "^0.187.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "diff": "^9.0.0",
+    "docx": "^9.15.4",
+    "electron": "^45.3.2",
+    "electron-builder": "^26.18.0",
+    "electron-vite": "^6.0.0",
+    "jsdom": "^31.0.1",
+    "mammoth": "^1.13.0",
+    "markdown-it": "^15.0.3",
+    "motion": "^14.14.0",
+    "node-html-parser": "^9.0.7",
+    "playwright": "^1.65.1",
+    "postprocessing": "^6.39.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "sanitize-html": "^2.18.2",
+    "three": "^0.187.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0",
+    "zod": "^4.6.7",
+    "zustand": "^5.1.0"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "chokidar": "^6.0.0",
+    "electron-updater": "^6.8.11",
+    "jsonc-parser": "^3.3.1",
+    "yaml": "^2.9.1",
+    "semver": "^7.8.6"
+  },
+  "private": true,
+  "bin": {
+    "atlas": "cli/atlas.ts",
+    "atlas-mcp": "cli/mcp.ts"
+  },
+  "productName": "Reprobates Atlas",
+  "author": "Nathan",
+  "build": {
+    "appId": "com.reprobates.atlas",
+    "productName": "Reprobates Atlas",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "out/**",
+      "!out/addons-test/**",
+      "package.json"
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "identity": null,
+      "artifactName": "Reprobates-Atlas-${version}-${arch}.${ext}"
+    },
+    "dmg": {
+      "title": "Reprobates Atlas ${version}"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Reprobates-Atlas-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "NateGrenade",
+        "repo": "reprobates_atlas",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NateGrenade/reprobates_atlas.git"
+  }
+}

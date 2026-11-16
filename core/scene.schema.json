@@ -1,0 +1,271 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://reprobates-atlas/scene.schema.json",
+  "title": "Reprobates Atlas scene spec (*.scene.json)",
+  "description": "Declarative description of one map level. Units are parent-local: the scene's radius is 100.",
+  "type": "object",
+  "required": [
+    "version",
+    "preset"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "vec3": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "color": {
+      "type": "string",
+      "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
+    },
+    "vaultFile": {
+      "type": "string",
+      "description": "Vault-relative path, e.g. Atlas/Maps/castle.glb",
+      "minLength": 1
+    }
+  },
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "preset": {
+      "enum": [
+        "galaxy",
+        "system",
+        "planet",
+        "terrain",
+        "city",
+        "plan",
+        "model"
+      ]
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "params": {
+      "type": "object",
+      "description": "Preset parameters. galaxy: arms, bar, core, dust, stars, palette. system: star_color, orbits, stars [{color, size, name}] for multi-star systems. planet: color, ocean, atmosphere, clouds, texture. terrain: heightmap, ramp, height. city: blocks, footprints. plan: image, width. model: file, scale.",
+      "properties": {
+        "arms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 12
+        },
+        "bar": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "core": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "dust": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "stars": {
+          "description": "galaxy: star count (integer). system: a list of stars [{color, size, name}] arranged round a common centre (visual only)",
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2000000
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "color": {
+                    "$ref": "#/definitions/color"
+                  },
+                  "size": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          ]
+        },
+        "twist": {
+          "type": "number"
+        },
+        "palette": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/color"
+          }
+        },
+        "star_color": {
+          "$ref": "#/definitions/color"
+        },
+        "orbits": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "color": {
+          "$ref": "#/definitions/color"
+        },
+        "ocean": {
+          "$ref": "#/definitions/color"
+        },
+        "atmosphere": {
+          "$ref": "#/definitions/color"
+        },
+        "clouds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "texture": {
+          "$ref": "#/definitions/vaultFile"
+        },
+        "heightmap": {
+          "$ref": "#/definitions/vaultFile"
+        },
+        "ramp": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/color"
+          }
+        },
+        "height": {
+          "type": "number"
+        },
+        "blocks": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "footprints": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        },
+        "image": {
+          "$ref": "#/definitions/vaultFile"
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "file": {
+          "$ref": "#/definitions/vaultFile"
+        },
+        "scale": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "layers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "points",
+              "rings",
+              "ribbons",
+              "sprites",
+              "image",
+              "text"
+            ]
+          },
+          "color": {
+            "$ref": "#/definitions/color"
+          },
+          "opacity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/vec3"
+            }
+          },
+          "radius": {
+            "type": "number"
+          },
+          "radii": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "width": {
+            "type": "number"
+          },
+          "size": {
+            "type": "number"
+          },
+          "position": {
+            "$ref": "#/definitions/vec3"
+          },
+          "rotation": {
+            "$ref": "#/definitions/vec3"
+          },
+          "image": {
+            "$ref": "#/definitions/vaultFile"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "labels": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "text",
+          "position"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "position": {
+            "$ref": "#/definitions/vec3"
+          },
+          "importance": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,1 @@
+{ "id": "assistant", "name": "Assistant", "version": "0.1.0", "description": "A prompt bar (Cmd+J) that can look at the Atlas and steer it, using Claude or Codex signed in on this computer.", "entry": { "renderer": "renderer.js", "main": "main.js" } }

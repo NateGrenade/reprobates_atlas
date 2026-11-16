@@ -1,0 +1,1 @@
+{ "id": "sample", "name": "Sample add-on", "version": "0.1.0", "description": "Shows what an add-on can add: a view, a settings pane, a command and a floating overlay.", "entry": { "renderer": "renderer.js", "main": "main.js" } }

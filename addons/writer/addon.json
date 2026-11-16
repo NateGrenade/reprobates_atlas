@@ -1,0 +1,1 @@
+{ "id": "writer", "name": "Write", "version": "0.1.0", "description": "A manuscript desk with lore beside the page, revisions, snapshots and portable exports.", "entry": { "renderer": "renderer.js", "main": "main.js" } }

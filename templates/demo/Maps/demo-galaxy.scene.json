@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "preset": "galaxy",
+  "seed": 7,
+  "params": { "arms": 4, "bar": 0.25, "core": 0.7, "dust": 0.5, "stars": 70000, "twist": 1.3, "palette": ["#ffd9a0", "#f0c27e", "#9fb4ff", "#c8b6ff"] }
+}
